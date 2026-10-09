@@ -1,3 +1,4 @@
+const fs = require('fs');
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -25,6 +26,12 @@ const pool = new Pool({
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'report.html'));
 });
+
+function loadLocations() {
+    return JSON.parse(
+        fs.readFileSync(path.join(__dirname, 'location_descriptions.json'), 'utf-8')
+    );
+}
 
 // ค่าที่อนุญาตของแต่ละ drop down (ตรวจซ้ำฝั่ง server อีกชั้น)
 const ALLOWED = {
@@ -61,7 +68,7 @@ const ALLOWED = {
 'RITUALISM',
 'CRIM SEXUAL ASSAULT',
 'DOMESTIC VIOLENCE'],
-    locationDescription: ['Apartment', 'Street'],
+    locationDescription: loadLocations(),
     beat: [413, 1124],
     district: [...Array.from({ length: 22 }, (_, i) => i + 1), 24, 25, 31, 61],
     ward: Array.from({ length: 51 }, (_, i) => i),          // 0 - 50

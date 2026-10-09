@@ -294,8 +294,6 @@
                     <label for="locationDescription">3. Location Description</label>
                     <select id="locationDescription" name="locationDescription" required>
                         <option value="" disabled selected>Select location...</option>
-                        <option value="Apartment">Apartment</option>
-                        <option value="Street">Street</option>
                     </select>
                 </div>
 
@@ -463,6 +461,16 @@
                 sel.appendChild(opt);
             });
         }
+        fetch('location_descriptions.json')
+            .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(list => fillSelect('locationDescription', list))
+    .catch(err => {
+        console.error(err);
+        alert('โหลดรายการ Location Description ไม่สำเร็จ: ' + err.message);
+    });
         const range = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
         fillSelect('district', [...range(1, 22), 24, 25, 31, 61]);

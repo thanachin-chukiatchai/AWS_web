@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashBoard Chicago Crime</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+        body {
+            background: #ffffff;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+            justify-content: flex-start;
+            min-height: 100vh;
+            position: relative;
+            box-sizing: border-box;
+            font-family: "Fira Sans", sans-serif;
+        }
+        a,button,input,select,h1,h2,h3,h4,h5,* {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            border: none;
+            text-decoration: none;
+            background: none;
+        }
+        .NavBar {
+            background: #e35205;
+            padding: 12px 32px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            align-self: stretch;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .Logo {
+            background: #ffffff;
+            padding: 5px 10px;
+            display: flex;
+            flex-direction: row;
+            gap: 12px;
+            align-items: center;
+            justify-content: flex-start;
+            flex-shrink: 0;
+            position: relative;
+            border-radius: 7px;
+        }
+        .Logo h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #000000;
+        }
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .nav-link {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 15px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .btn-report {
+            background: #ffffff;
+            color: #e35205;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 7px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .btn-report:hover {
+            background: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .btn-report:active {
+            transform: translateY(0);
+        }
+        .DashBoard_body {
+            padding: 20px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            align-items: flex-start;
+            justify-content: flex-start;
+            align-self: stretch;
+            flex-shrink: 0;
+            position: relative;
+            min-height: calc(100vh - 82px);
+        }
+        .DashBoard_Title h1 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .kpi-row {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            align-items: flex-start;
+            justify-content: flex-start;
+            align-self: stretch;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 8px;
+            border: 3px solid #e35205;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+            justify-content: center;
+            flex: 1;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        .card h2 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #666666;
+            font-weight: 600;
+        }
+        .card .Value {
+            font-size: 32px;
+            font-weight: 800;
+            color: #e35205;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: row;
+            gap: 24px;
+            align-items: stretch;
+            justify-content: flex-start;
+            align-self: stretch;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .left-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            align-items: flex-start;
+            justify-content: flex-start;
+            flex: 1;
+            position: relative;
+        }
+        .right-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            align-items: stretch;
+            justify-content: space-between;
+            flex: 1;
+            position: relative;
+            height: 500px;
+        }
+        .right-pane .card {
+            flex: 1;
+            padding: 12px;
+            height: calc(50% - 12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+        }
+        .right-pane .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 8px;
+            border: 3px solid #e35205;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        footer {
+            align-self: stretch;
+            padding: 0 40px 40px 40px;
+        }
+
+        .footer-table-container {
+            background: #ffffff;
+            border-radius: 7px;
+            border: 5px solid #e35205;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-family: Arial, sans-serif;
+        }
+
+        .footer-table th {
+            background-color: #e35205;
+            color: #ffffff;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .footer-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e0e0;
+            height: 40px;
+            color: #333333;
+        }
+
+        .footer-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .footer-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <header class="NavBar">
+        <div class="Logo">
+            <img class="LogoImg" src="KMITL_Sublogo.svg.webp" alt="Logo" style="height: 40px;" onerror="this.style.display='none'">
+            <h1>Chicago Crime</h1>
+        </div>
+        <nav>
+            <a href="#" class="btn-report">Report Crime Scene</a>
+            <a href="#" class="nav-link">Data</a>
+        </nav>
+    </header>
+
+    <div class="DashBoard_body">
+        <div class="DashBoard_Title">
+            <div>
+                <h1>Citywide Public Safety Analytics</h1>
+            </div>
+        </div>
+        <section class="kpi-row">
+            <div class="card">
+                <h2>Total Crime</h2>
+                <div class="Value">999</div>
+            </div>
+            <div class="card">
+                <h2>Theft</h2>
+                <div class="Value">999</div>
+            </div>
+            <div class="card">
+                <h2>Arrest Rate</h2>
+                <div class="Value">99%</div>
+            </div>
+        </section>
+        <div class="main">
+            <div class="left-pane">
+                <div id="map"></div>
+            </div>
+            <div class="right-pane">
+                <div class="card">
+                    <img src="Report.png" alt="Report Graph" onerror="this.src='https://placehold.co/600x250/ffffff/e35205?text=Crime+Report+Graph'">
+                </div>
+                <div class="card">
+                    <img src="BarChart.png" alt="Bar Chart" onerror="this.src='https://placehold.co/600x250/ffffff/e35205?text=Crime+Analytics+Chart'">
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer>
+    <div class="footer-table-container">
+        <table class="footer-table">
+            <thead>
+                <tr>
+                    <th>District / Area</th>
+                    <th>Incidents Reported</th>
+                    <th>Status</th>
+                    <th>Action Required</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</footer>
+    <script>
+        const map = L.map('map').setView([41.8781, -87.6298], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+    </script>
+</body>
+</html>

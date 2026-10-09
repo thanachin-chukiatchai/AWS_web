@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Chicago Crime</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+        body {
+            background: #ffffff;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+            justify-content: flex-start;
+            min-height: 100vh;
+            position: relative;
+            box-sizing: border-box;
+            font-family: "Fira Sans", sans-serif;
+        }
+        a,button,input,select,textarea,h1,h2,h3,h4,h5,* {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            border: none;
+            text-decoration: none;
+            background: none;
+            font-family: inherit;
+        }
+        .NavBar {
+            background: #e35205;
+            padding: 12px 32px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            align-self: stretch;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .Logo {
+            background: #ffffff;
+            padding: 5px 10px;
+            display: flex;
+            flex-direction: row;
+            gap: 12px;
+            align-items: center;
+            justify-content: flex-start;
+            flex-shrink: 0;
+            position: relative;
+            border-radius: 7px;
+        }
+        .Logo h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #000000;
+        }
+        nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .nav-link {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 15px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .btn-report {
+            background: #ffffff;
+            color: #e35205;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 7px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .btn-report:hover {
+            background: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .btn-report:active {
+            transform: translateY(0);
+        }
+        .Report_body {
+            padding: 20px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            align-items: flex-start;
+            justify-content: flex-start;
+            align-self: stretch;
+            flex-shrink: 0;
+            position: relative;
+            min-height: calc(100vh - 82px);
+        }
+        .Report_Title h1 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 8px;
+            border: 3px solid #e35205;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            align-items: flex-start;
+            justify-content: flex-start;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            width: 100%;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            width: 100%;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+        .form-group.full-width {
+            grid-column: span 2;
+        }
+        .form-group label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333333;
+        }
+        .form-group input, 
+        .form-group select, 
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid #cccccc;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s ease;
+            background: #ffffff;
+        }
+        .form-group input:focus, 
+        .form-group select:focus, 
+        .form-group textarea:focus {
+            border-color: #e35205;
+        }
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            height: 40px;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .radio-option input[type="radio"] {
+            width: auto;
+            cursor: pointer;
+            accent-color: #e35205;
+        }
+        #map {
+            width: 100%;
+            height: 300px;
+            border-radius: 6px;
+            border: 1.5px solid #cccccc;
+            z-index: 1;
+        }
+        .btn-submit {
+            background: #e35205;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 16px;
+            padding: 12px 28px;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(227, 82, 5, 0.3);
+            align-self: flex-end;
+            margin-top: 10px;
+        }
+        .btn-submit:hover {
+            background: #c44300;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(227, 82, 5, 0.4);
+        }
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+        footer {
+            align-self: stretch;
+            padding: 0 40px 40px 40px;
+        }
+    </style>
+</head>
+<body>
+    <header class="NavBar">
+        <div class="Logo">
+            <img class="LogoImg" src="KMITL_Sublogo.svg.webp" alt="Logo" style="height: 40px;" onerror="this.style.display='none'">
+            <h1>Chicago Crime</h1>
+        </div>
+        <nav>
+            <a href="#" class="btn-report">DashBoard Analytics</a>
+            <a href="#" class="nav-link">Data</a>
+        </nav>
+    </header>
+
+    <div class="Report_body">
+        <div class="Report_Title">
+            <div>
+                <h1>Report a Crime Incident</h1>
+            </div>
+        </div>
+
+        <form class="card" onsubmit="event.preventDefault();">
+            <div class="form-grid">
+                <!-- 1. Street name -->
+                <div class="form-group">
+                    <label for="streetName">1. Street Name</label>
+                    <input type="text" id="streetName" name="streetName" placeholder="e.g. N WABASH AVE" required>
+                </div>
+
+                <!-- 2. Type of crime -->
+                <div class="form-group">
+                    <label for="crimeType">2. Type of Crime</label>
+                    <select id="crimeType" name="crimeType" required>
+                        <option value="" disabled selected>Select crime type...</option>
+                        <option value="THEFT">THEFT</option>
+                        <option value="BATTERY">BATTERY</option>
+                        <option value="CRIMINAL DAMAGE">CRIMINAL DAMAGE</option>
+                        <option value="ASSAULT">ASSAULT</option>
+                        <option value="OTHER OFFENSE">OTHER OFFENSE</option>
+                    </select>
+                </div>
+
+                <!-- 3. Description -->
+                <div class="form-group full-width">
+                    <label for="description">3. Description</label>
+                    <textarea id="description" name="description" rows="3" placeholder="Provide details about the incident..." required></textarea>
+                </div>
+
+                <!-- 4. Location of incident -->
+                <div class="form-group full-width">
+                    <label for="locationIncident">4. Location of Incident</label>
+                    <input type="text" id="locationIncident" name="locationIncident" placeholder="e.g. STREET, APARTMENT, RESIDENCE" required>
+                </div>
+
+                <!-- 5. Arrest made? -->
+                <div class="form-group">
+                    <label>5. Arrest Made?</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="arrest" value="true" required> Yes
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="arrest" value="false" checked> No
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 6. Domestic crime? -->
+                <div class="form-group">
+                    <label>6. Domestic Crime?</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="domestic" value="true" required> Yes
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="domestic" value="false" checked> No
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Map for location selection -->
+                <div class="form-group full-width">
+                    <label>Click on the map to pick Latitude & Longitude:</label>
+                    <div id="map"></div>
+                </div>
+
+                <!-- 7. Latitude -->
+                <div class="form-group">
+                    <label for="latitude">7. Latitude</label>
+                    <input type="number" step="any" id="latitude" name="latitude" placeholder="Click map or type e.g. 41.8781" required readonly>
+                </div>
+
+                <!-- 8. Longitude -->
+                <div class="form-group">
+                    <label for="longitude">8. Longitude</label>
+                    <input type="number" step="any" id="longitude" name="longitude" placeholder="Click map or type e.g. -87.6298" required readonly>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit">Submit Incident Report</button>
+        </form>
+    </div>
+
+    <footer></footer>
+
+    <script>
+        const CHICAGO_LAT = 41.8781;
+        const CHICAGO_LNG = -87.6298;
+
+        const map = L.map('map').setView([CHICAGO_LAT, CHICAGO_LNG], 11);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let marker;
+        map.on('click', function(e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lng = e.latlng.lng.toFixed(6);
+
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+
+            if (marker) {
+                marker.setLatLng(e.latlng);
+            } else {
+                marker = L.marker(e.latlng, { draggable: true }).addTo(map);
+
+                marker.on('dragend', function(evt) {
+                    const pos = evt.target.getLatLng();
+                    document.getElementById('latitude').value = pos.lat.toFixed(6);
+                    document.getElementById('longitude').value = pos.lng.toFixed(6);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -239,40 +239,79 @@
 
         <form class="card" onsubmit="event.preventDefault();">
             <div class="form-grid">
-                <!-- 1. Street name -->
+                <!-- 1. Primary Type -->
                 <div class="form-group">
-                    <label for="streetName">1. Street Name</label>
-                    <input type="text" id="streetName" name="streetName" placeholder="e.g. N WABASH AVE" required>
-                </div>
-
-                <!-- 2. Type of crime -->
-                <div class="form-group">
-                    <label for="crimeType">2. Type of Crime</label>
-                    <select id="crimeType" name="crimeType" required>
-                        <option value="" disabled selected>Select crime type...</option>
-                        <option value="THEFT">THEFT</option>
-                        <option value="BATTERY">BATTERY</option>
-                        <option value="CRIMINAL DAMAGE">CRIMINAL DAMAGE</option>
-                        <option value="ASSAULT">ASSAULT</option>
-                        <option value="OTHER OFFENSE">OTHER OFFENSE</option>
+                    <label for="primaryType">1. Primary Type</label>
+                    <select id="primaryType" name="primaryType" required>
+                        <option value="" disabled selected>Select primary type...</option>
+                        <option value="WEAPONS VIOLATION">WEAPONS VIOLATION</option>
+                        <option value="ROBBERY">ROBBERY</option>
                     </select>
                 </div>
 
-                <!-- 3. Description -->
-                <div class="form-group full-width">
-                    <label for="description">3. Description</label>
-                    <textarea id="description" name="description" rows="3" placeholder="Provide details about the incident..." required></textarea>
-                </div>
-
-                <!-- 4. Location of incident -->
-                <div class="form-group full-width">
-                    <label for="locationIncident">4. Location of Incident</label>
-                    <input type="text" id="locationIncident" name="locationIncident" placeholder="e.g. STREET, APARTMENT, RESIDENCE" required>
-                </div>
-
-                <!-- 5. Arrest made? -->
+                <!-- 2. Description -->
                 <div class="form-group">
-                    <label>5. Arrest Made?</label>
+                    <label for="description">2. Description</label>
+                    <input type="text" id="description" name="description" placeholder="e.g. ARMED: HANDGUN" required>
+                </div>
+
+                <!-- 3. Location Description -->
+                <div class="form-group">
+                    <label for="locationDescription">3. Location Description</label>
+                    <select id="locationDescription" name="locationDescription" required>
+                        <option value="" disabled selected>Select location...</option>
+                        <option value="Apartment">Apartment</option>
+                        <option value="Street">Street</option>
+                    </select>
+                </div>
+
+                <!-- 4. Beat -->
+                <div class="form-group">
+                    <label for="beat">4. Beat</label>
+                    <select id="beat" name="beat" required>
+                        <option value="" disabled selected>Select beat...</option>
+                        <option value="413">413</option>
+                        <option value="1124">1124</option>
+                    </select>
+                </div>
+
+                <!-- 5. District (สร้างตัวเลือกด้วย JS) -->
+                <div class="form-group">
+                    <label for="district">5. District</label>
+                    <select id="district" name="district" required>
+                        <option value="" disabled selected>Select district...</option>
+                    </select>
+                </div>
+
+                <!-- 6. Ward (สร้างตัวเลือกด้วย JS) -->
+                <div class="form-group">
+                    <label for="ward">6. Ward</label>
+                    <select id="ward" name="ward" required>
+                        <option value="" disabled selected>Select ward...</option>
+                    </select>
+                </div>
+
+                <!-- 7. Community Area (สร้างตัวเลือกด้วย JS) -->
+                <div class="form-group">
+                    <label for="communityArea">7. Community Area</label>
+                    <select id="communityArea" name="communityArea" required>
+                        <option value="" disabled selected>Select community area...</option>
+                    </select>
+                </div>
+
+                <!-- 8. FBI Code -->
+                <div class="form-group">
+                    <label for="fbiCode">8. FBI Code</label>
+                    <select id="fbiCode" name="fbiCode" required>
+                        <option value="" disabled selected>Select FBI code...</option>
+                        <option value="03">03</option>
+                        <option value="06">06</option>
+                    </select>
+                </div>
+
+                <!-- 9. Arrest made? -->
+                <div class="form-group">
+                    <label>9. Arrest Made?</label>
                     <div class="radio-group">
                         <label class="radio-option">
                             <input type="radio" name="arrest" value="true" required> Yes
@@ -283,9 +322,9 @@
                     </div>
                 </div>
 
-                <!-- 6. Domestic crime? -->
+                <!-- 10. Domestic crime? -->
                 <div class="form-group">
-                    <label>6. Domestic Crime?</label>
+                    <label>10. Domestic Crime?</label>
                     <div class="radio-group">
                         <label class="radio-option">
                             <input type="radio" name="domestic" value="true" required> Yes
@@ -304,14 +343,14 @@
 
                 <!-- 7. Latitude -->
                 <div class="form-group">
-                    <label for="latitude">7. Latitude</label>
-                    <input type="number" step="any" id="latitude" name="latitude" placeholder="Click map or type e.g. 41.8781" required readonly>
+                    <label for="latitude">11. Latitude</label>
+                    <input type="number" step="0.000000001" id="latitude" name="latitude" placeholder="Click map e.g. 41.878100000" required readonly>
                 </div>
 
                 <!-- 8. Longitude -->
                 <div class="form-group">
-                    <label for="longitude">8. Longitude</label>
-                    <input type="number" step="any" id="longitude" name="longitude" placeholder="Click map or type e.g. -87.6298" required readonly>
+                    <label for="longitude">12. Longitude</label>
+                    <input type="number" step="0.000000001" id="longitude" name="longitude" placeholder="Click map e.g. -87.629800000" required readonly>
                 </div>
             </div>
 
@@ -333,8 +372,8 @@
 
         let marker;
         map.on('click', function(e) {
-            const lat = e.latlng.lat.toFixed(6);
-            const lng = e.latlng.lng.toFixed(6);
+            const lat = e.latlng.lat.toFixed(9);
+            const lng = e.latlng.lng.toFixed(9);
 
             document.getElementById('latitude').value = lat;
             document.getElementById('longitude').value = lng;
@@ -346,11 +385,30 @@
 
                 marker.on('dragend', function(evt) {
                     const pos = evt.target.getLatLng();
-                    document.getElementById('latitude').value = pos.lat.toFixed(6);
-                    document.getElementById('longitude').value = pos.lng.toFixed(6);
+                    document.getElementById('latitude').value = pos.lat.toFixed(9);
+                    document.getElementById('longitude').value = pos.lng.toFixed(9);
                 });
             }
         });
+
+
+        // ==========================================
+        // สร้างตัวเลือก drop down ที่เป็นตัวเลข
+        // ==========================================
+        function fillSelect(id, values) {
+            const sel = document.getElementById(id);
+            values.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v;
+                opt.textContent = v;
+                sel.appendChild(opt);
+            });
+        }
+        const range = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
+        fillSelect('district', [...range(1, 22), 24, 25, 31, 61]);
+        fillSelect('ward', range(0, 50));
+        fillSelect('communityArea', range(1, 77));
 
         // ==========================================
         // ส่วนจัดการการส่งข้อมูลฟอร์มไปยัง RDS Backend
@@ -360,10 +418,14 @@
             e.preventDefault();
 
             // ดึงค่าจากฟอร์ม
-            const streetName = document.getElementById('streetName').value;
-            const crimeType = document.getElementById('crimeType').value;
-            const description = document.getElementById('description').value;
-            const locationIncident = document.getElementById('locationIncident').value;
+            const primaryType = document.getElementById('primaryType').value;
+            const description = document.getElementById('description').value.trim();
+            const locationDescription = document.getElementById('locationDescription').value;
+            const beat = parseInt(document.getElementById('beat').value, 10);
+            const district = parseInt(document.getElementById('district').value, 10);
+            const ward = parseInt(document.getElementById('ward').value, 10);
+            const communityArea = parseInt(document.getElementById('communityArea').value, 10);
+            const fbiCode = document.getElementById('fbiCode').value; // เก็บเป็น string เพื่อคง '03', '06'
             const arrest = document.querySelector('input[name="arrest"]:checked').value === 'true';
             const domestic = document.querySelector('input[name="domestic"]:checked').value === 'true';
             const latitude = parseFloat(document.getElementById('latitude').value);
@@ -376,10 +438,14 @@
             }
 
             const payload = {
-                streetName,
-                crimeType,
+                primaryType,
                 description,
-                locationIncident,
+                locationDescription,
+                beat,
+                district,
+                ward,
+                communityArea,
+                fbiCode,
                 arrest,
                 domestic,
                 latitude,

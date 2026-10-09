@@ -26,42 +26,85 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'report.html'));
 });
 
+// ค่าที่อนุญาตของแต่ละ drop down (ตรวจซ้ำฝั่ง server อีกชั้น)
+const ALLOWED = {
+    primaryType: ['WEAPONS VIOLATION', 'ROBBERY'],
+    locationDescription: ['Apartment', 'Street'],
+    beat: [413, 1124],
+    district: [...Array.from({ length: 22 }, (_, i) => i + 1), 24, 25, 31, 61],
+    ward: Array.from({ length: 51 }, (_, i) => i),          // 0 - 50
+    communityArea: Array.from({ length: 77 }, (_, i) => i + 1), // 1 - 77
+    fbiCode: ['03', '06']
+};
+
 // API สำหรับรับข้อมูลจากหน้าเว็บแล้วบันทึกลง RDS
 app.post('/api/add-crime', async (req, res) => {
     try {
         const {
-            streetName,
-            crimeType,
+            primaryType,
             description,
-            locationIncident,
+            locationDescription,
+            beat,
+            district,
+            ward,
+            communityArea,
+            fbiCode,
             arrest,
             domestic,
             latitude,
             longitude
         } = req.body;
 
+        // ตรวจสอบค่าที่ส่งมา
+        const beatN = Number(beat);
+        const districtN = Number(district);
+        const wardN = Number(ward);
+        const communityAreaN = Number(communityArea);
+
+        if (
+            !ALLOWED.primaryType.includes(primaryType) ||
+            !ALLOWED.locationDescription.includes(locationDescription) ||
+            !ALLOWED.beat.includes(beatN) ||
+            !ALLOWED.district.includes(districtN) ||
+            !ALLOWED.ward.includes(wardN) ||
+            !ALLOWED.communityArea.includes(communityAreaN) ||
+            !ALLOWED.fbiCode.includes(fbiCode) ||
+            typeof description !== 'string' || description.trim() === '' ||
+            !Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))
+        ) {
+            return res.status(400).json({ success: false, error: 'ข้อมูลที่ส่งมาไม่ถูกต้อง' });
+        }
+
         // คำสั่ง SQL INSERT ข้อมูลคดีใหม่
         const queryText = `
             INSERT INTO chicago_crime (
-                block, 
-                primary_type, 
-                description, 
-                location_description, 
-                arrest, 
-                domestic, 
-                latitude, 
-                longitude, 
+                primary_type,
+                description,
+                location_description,
+                beat,
+                district,
+                ward,
+                community_area,
+                fbi_code,
+                arrest,
+                domestic,
+                latitude,
+                longitude,
                 date
-            ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
             RETURNING *;
         `;
 
         const values = [
-            streetName,
-            crimeType,
-            description,
-            locationIncident,
+            primaryType,
+            description.trim(),
+            locationDescription,
+            beatN,
+            districtN,
+            wardN,
+            communityAreaN,
+            fbiCode,
             arrest,
             domestic,
             latitude,

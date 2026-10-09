@@ -321,7 +321,7 @@
 
     <footer></footer>
 
-    <script>
+<script>
         const CHICAGO_LAT = 41.8781;
         const CHICAGO_LNG = -87.6298;
 
@@ -349,6 +349,72 @@
                     document.getElementById('latitude').value = pos.lat.toFixed(6);
                     document.getElementById('longitude').value = pos.lng.toFixed(6);
                 });
+            }
+        });
+
+        // ==========================================
+        // ส่วนจัดการการส่งข้อมูลฟอร์มไปยัง RDS Backend
+        // ==========================================
+        const form = document.querySelector('form');
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // ดึงค่าจากฟอร์ม
+            const streetName = document.getElementById('streetName').value;
+            const crimeType = document.getElementById('crimeType').value;
+            const description = document.getElementById('description').value;
+            const locationIncident = document.getElementById('locationIncident').value;
+            const arrest = document.querySelector('input[name="arrest"]:checked').value === 'true';
+            const domestic = document.querySelector('input[name="domestic"]:checked').value === 'true';
+            const latitude = parseFloat(document.getElementById('latitude').value);
+            const longitude = parseFloat(document.getElementById('longitude').value);
+
+            // ตรวจสอบว่าปักหมุดแผนที่เรียบร้อยหรือยัง
+            if (isNaN(latitude) || isNaN(longitude)) {
+                alert('โปรดคลิกเลือกพิกัดบนแผนที่ก่อนส่งรายงาน');
+                return;
+            }
+
+            const payload = {
+                streetName,
+                crimeType,
+                description,
+                locationIncident,
+                arrest,
+                domestic,
+                latitude,
+                longitude
+            };
+
+            const submitBtn = document.querySelector('.btn-submit');
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'กำลังบันทึกข้อมูล...';
+
+            try {
+                const response = await fetch('/api/add-crime', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('บันทึกข้อมูลอาชญากรรมลง RDS สำเร็จเรียบร้อย!');
+                    form.reset();
+                    if (marker) {
+                        map.removeLayer(marker);
+                        marker = null;
+                    }
+                } else {
+                    alert('เกิดข้อผิดพลาดในการบันทึก: ' + result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Submit Incident Report';
             }
         });
     </script>

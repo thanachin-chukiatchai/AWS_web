@@ -15,9 +15,9 @@ app.use(express.static(__dirname));
 // กำหนดการเชื่อมต่อฐานข้อมูล PostgreSQL บน RDS
 const pool = new Pool({
     user: process.env.DB_USER || 'postgres',
-    host: process.env.DB_HOST || 'ใส่_ENDPOINT_ของ_RDS',
-    database: process.env.DB_NAME || 'postgres',
-    password: process.env.DB_PASSWORD || 'ใส่_PASSWORD_ของ_RDS',
+    host: process.env.DB_HOST || 'chicago-crime-rds.c1laumrbxyfl.us-east-1.rds.amazonaws.com',
+    database: process.env.DB_NAME || 'chicagocrime',
+    password: process.env.DB_PASSWORD || 'PostgreSQL1234',
     port: process.env.DB_PORT || 5432,
     ssl: { rejectUnauthorized: false } // อนุญาตการเชื่อมต่อ SSL กับ RDS
 });

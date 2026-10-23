@@ -1,0 +1,35 @@
+# Node.js dependencies and generated test output
+node_modules/
+coverage/
+.nyc_output/
+
+# Environment variables and local credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+.aws/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs and runtime files
+logs/
+*.log
+*.pid
+*.pid.lock
+
+# Local file backups and editor temporary files
+*.backup
+*.backup-*
+*.bak
+*.tmp
+*.swp
+*.swo
+*~
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

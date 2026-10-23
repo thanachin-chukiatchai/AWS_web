@@ -481,6 +481,8 @@
         // ส่วนจัดการการส่งข้อมูลฟอร์มไปยัง RDS Backend
         // ==========================================
         const form = document.querySelector('form');
+        // Keep the same request identity after network errors and page reloads.
+        let pendingSubmission = JSON.parse(sessionStorage.getItem('pending_crime_submission') || 'null');
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -524,16 +526,34 @@
             submitBtn.innerText = 'กำลังบันทึกข้อมูล...';
 
             try {
+                const token = localStorage.getItem('crime_token');
+                if (!token) { window.location.href = '/login.html'; return; }
+                const serialized = JSON.stringify(payload);
+                if (!pendingSubmission || pendingSubmission.payload !== serialized) {
+                    const bytes = new Uint8Array(16);
+                    crypto.getRandomValues(bytes);
+                    bytes[6] = (bytes[6] & 15) | 64;
+                    bytes[8] = (bytes[8] & 63) | 128;
+                    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+                    pendingSubmission = {payload: serialized,
+                        id: `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`};
+                    sessionStorage.setItem('pending_crime_submission', JSON.stringify(pendingSubmission));
+                }
                 const response = await fetch('/api/add-crime', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`,
+                        'Idempotency-Key': pendingSubmission.id },
                     body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('บันทึกข้อมูลอาชญากรรมลง RDS สำเร็จเรียบร้อย!');
+                    alert(result.raw_status === 'published'
+                        ? `Saved to RDS and S3 raw. Reference: ${result.event_id}`
+                        : `Saved to RDS. S3 delivery is pending and will retry automatically. Reference: ${result.event_id}`);
+                    sessionStorage.removeItem('pending_crime_submission');
+                    pendingSubmission = null;
                     form.reset();
                     if (marker) {
                         map.removeLayer(marker);

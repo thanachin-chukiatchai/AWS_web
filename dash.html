@@ -114,6 +114,58 @@
             font-weight: 700;
             letter-spacing: -0.5px;
         }
+        .map-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .map-controls label {
+            font-weight: 600;
+            color: #333333;
+        }
+        .map-controls select {
+            border: 2px solid #e35205;
+            border-radius: 6px;
+            padding: 8px 12px;
+            background: #ffffff;
+            color: #333333;
+            cursor: pointer;
+        }
+        .map-controls input[type="datetime-local"] {
+            border: 2px solid #e35205;
+            border-radius: 6px;
+            padding: 7px 10px;
+            background: #ffffff;
+            color: #333333;
+        }
+        .map-controls button {
+            border: 0;
+            border-radius: 6px;
+            padding: 9px 14px;
+            background: #e35205;
+            color: #ffffff;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .map-note {
+            color: #666666;
+            font-size: 13px;
+        }
+        .map-legend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            color: #555555;
+            font-size: 12px;
+        }
+        .legend-swatch {
+            width: 18px;
+            height: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.25);
+            display: inline-block;
+        }
         .kpi-row {
             display: flex;
             flex-direction: row;
@@ -265,18 +317,41 @@
                 <h1>Citywide Public Safety Analytics</h1>
             </div>
         </div>
+        <div class="map-controls">
+            <label for="mapMode">Map data</label>
+            <select id="mapMode">
+                <option value="actual">Actual crimes (2001–present)</option>
+                <option value="forecast">Forecast probability (next 30 days)</option>
+            </select>
+            <label for="mapDateTime">Date/time</label>
+            <input id="mapDateTime" type="datetime-local" step="60" required>
+            <label for="availableHours">Available times (latest 30 days with data)</label>
+            <select id="availableHours"><option value="">Choose an available time</option></select>
+            <span>Timezone: America/Chicago (Chicago local time; CST/CDT). Actual: selected time ? crime time &lt; selected time + 1 hour.</span>
+            <label for="communityFilter">Community Area</label>
+            <select id="communityFilter"><option value="">All areas</option></select>
+            <button id="applyDateTime" type="button">Apply</button>
+            <span id="mapNote" class="map-note">สีเข้ม = ความหนาแน่นเหตุการณ์จริงสูง</span>
+            <span class="map-legend" aria-label="Risk color legend">
+                <span class="legend-swatch" style="background:#78c679"></span> ต่ำ
+                <span class="legend-swatch" style="background:#fecc5c"></span> 20%+
+                <span class="legend-swatch" style="background:#fd8d3c"></span> 40%+
+                <span class="legend-swatch" style="background:#e31a1c"></span> 60%+
+                <span class="legend-swatch" style="background:#800026"></span> 80%+
+            </span>
+        </div>
         <section class="kpi-row">
             <div class="card">
                 <h2>Total Crime</h2>
-                <div class="Value">999</div>
+                <div id="totalCrime" class="Value">—</div>
             </div>
             <div class="card">
                 <h2>Theft</h2>
-                <div class="Value">999</div>
+                <div id="theftCrime" class="Value">—</div>
             </div>
             <div class="card">
                 <h2>Arrest Rate</h2>
-                <div class="Value">99%</div>
+                <div id="arrestRate" class="Value">—</div>
             </div>
         </section>
         <div class="main">
@@ -285,10 +360,12 @@
             </div>
             <div class="right-pane">
                 <div class="card">
-                    <img src="Report.png" alt="Report Graph" onerror="this.src='https://placehold.co/600x250/ffffff/e35205?text=Crime+Report+Graph'">
+                    <h2>Crime Report Chart</h2>
+                    <div id="reportChart" role="img" aria-label="Crime report chart">Loading...</div>
                 </div>
                 <div class="card">
-                    <img src="BarChart.png" alt="Bar Chart" onerror="this.src='https://placehold.co/600x250/ffffff/e35205?text=Crime+Analytics+Chart'">
+                    <h2 id="analysisTitle">Crime Analysis — last 24 hours</h2>
+                    <div id="analysisChart" role="img" aria-label="Crime analysis chart">Loading...</div>
                 </div>
             </div>
         </div>
@@ -304,7 +381,7 @@
                     <th>Action Required</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="crimeTableBody">
                 <tr>
                     <td>&nbsp;</td>
                     <td>&nbsp;</td>
@@ -325,6 +402,12 @@
                 </tr>
             </tbody>
         </table>
+        <div style="display:flex;gap:16px;align-items:center;padding:16px">
+            <button id="previousPage" type="button">Previous</button>
+            <span id="tablePage" aria-live="polite"></span>
+            <button id="nextPage" type="button">Next</button>
+        </div>
+        <p id="dashboardStatus" role="status" style="padding:0 16px"></p>
     </div>
 </footer>
     <script>
@@ -332,6 +415,445 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
+
+        let actualLayer;
+        let forecastLayer;
+        let communityFeatures = new Map();
+        const mapMode = document.getElementById('mapMode');
+        const mapDateTime = document.getElementById('mapDateTime');
+        const applyDateTime = document.getElementById('applyDateTime');
+        const mapNote = document.getElementById('mapNote');
+        const communityFilter = document.getElementById('communityFilter');
+        for (let area = 1; area <= 77; area++) communityFilter.add(new Option(`Area ${area}`, area));
+        let appliedFilter = null;
+        let dashboardPage = 1;
+        let dashboardVersion = 0;
+        let forecastRows = [];
+        let allForecastRows = [];
+        function setKpiLabels(labels) {
+            document.querySelectorAll('.kpi-row h2').forEach((heading, index) => heading.textContent = labels[index]);
+        }
+        const number = value => Number(value || 0).toLocaleString();
+        function chartBars(target, rows, percent = false) {
+            const root = document.getElementById(target);
+            root.replaceChildren();
+            root.style.cssText = 'width:100%;min-width:0;flex:1;min-height:140px;max-height:290px;overflow:auto;padding:8px;text-align:left;align-self:stretch';
+            if (!rows.length) { root.textContent = 'No data for this selection'; return; }
+            const max = percent ? 1 : Math.max(...rows.map(row => Number(row.value)), 1);
+            rows.forEach(row => {
+                const item = document.createElement('div');
+                item.style.marginBottom = '10px';
+                const label = document.createElement('div');
+                label.textContent = `${row.label}: ${percent ? (Number(row.value) * 100).toFixed(1) + '%' : number(row.value)}`;
+                const bar = document.createElement('div');
+                bar.style.cssText = `height:12px;border-radius:3px;background:${percent ? riskColor(Number(row.value)) : '#e35205'};width:${Math.max(0, Math.min(100, Number(row.value) / max * 100))}%`;
+                item.append(label, bar); root.append(item);
+            });
+        }
+        function crimeLineChart(rows) {
+            const root = document.getElementById('analysisChart');
+            root.replaceChildren();
+            root.style.cssText = 'width:100%;min-width:0;min-height:0;flex:1;overflow:auto;align-self:stretch';
+            const caption = document.createElement('p');
+            caption.style.cssText = 'font-size:12px;margin:0 0 6px';
+            caption.textContent = `24 hourly windows including the selected hour · America/Chicago · ${appliedFilter.communityArea ? `Area ${appliedFilter.communityArea}` : 'All areas'} · Orange point = selected hour. Hover or focus a point for its count.`;
+            root.append(caption);
+            if (!rows.length) { caption.textContent = 'Hourly history unavailable'; return; }
+            const svgNode = (tag, attrs, text) => {
+                const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+                Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+                if (text !== undefined) node.textContent = text;
+                return node;
+            };
+            const svg = svgNode('svg', { viewBox: '0 0 760 280', width: '100%', role: 'img', 'aria-label': 'Actual crime counts by hour, last 24 hours' });
+            svg.style.minWidth = '560px';
+            const max = Math.max(1, ...rows.map(row => Number(row.value)));
+            const x = i => 60 + i * 670 / Math.max(1, rows.length - 1);
+            const y = value => 215 - Number(value) / max * 160;
+            [...new Set([0, Math.ceil(max / 2), max])].forEach(value => {
+                const height = y(value);
+                svg.append(svgNode('line', { x1: 60, x2: 730, y1: height, y2: height, stroke: '#ddd' }));
+                svg.append(svgNode('text', { x: 52, y: height + 4, 'text-anchor': 'end', 'font-size': 12 }, number(value)));
+            });
+            svg.append(svgNode('text', { x: 60, y: 24, 'font-size': 13 }, 'Crime count (cases)'));
+            svg.append(svgNode('polyline', { points: rows.map((row, i) => `${x(i)},${y(row.value)}`).join(' '), fill: 'none', stroke: '#2563eb', 'stroke-width': 2 }));
+            rows.forEach((row, i) => {
+                const selected = Boolean(row.selected);
+                const label = `${row.label}: ${number(row.value)} cases${selected ? ' (selected hour)' : ''}`;
+                const point = svgNode('circle', { cx: x(i), cy: y(row.value), r: selected ? 7 : 4, fill: selected ? '#e35205' : '#2563eb', stroke: '#fff', 'stroke-width': 2, tabindex: 0, 'aria-label': label, 'data-selected': selected });
+                point.append(svgNode('title', {}, label)); svg.append(point);
+                if (i % 6 === 0 || i === rows.length - 1) {
+                    svg.append(svgNode('text', { x: x(i), y: 238, 'text-anchor': 'middle', 'font-size': 11 }, row.label.slice(11, 16)));
+                    svg.append(svgNode('text', { x: x(i), y: 255, 'text-anchor': 'middle', 'font-size': 10 }, row.label.slice(5, 10)));
+                }
+                if (selected) svg.append(svgNode('text', { x: x(i), y: y(row.value) - 13, 'text-anchor': 'end', fill: '#b74100', 'font-size': 12 }, `Selected: ${number(row.value)}`));
+            });
+            root.append(svg);
+        }
+        function forecastHour(value, offset = 0) {
+            const match = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(String(value || ''));
+            if (!match) return null;
+            const d = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4]) + offset * 3600000);
+            return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getUTCDate()).padStart(2, '0') + 'T' + String(d.getUTCHours()).padStart(2, '0') + ':00';
+        }
+        function forecastTrendChart(rows, selectedAt) {
+            const root = document.getElementById('analysisChart');
+            root.replaceChildren();
+            root.style.cssText = 'width:100%;min-width:0;min-height:0;flex:1;overflow:auto;align-self:stretch';
+            const caption = document.createElement('p');
+            caption.textContent = 'Citywide mean probability · next 24 hours · America/Chicago. Missing hours are gaps, not 0%.';
+            root.append(caption);
+            const groups = new Map();
+            rows.forEach(row => {
+                const hour = forecastHour(row.date), area = Number(row.community_area), value = Number(row.probability);
+                if (!hour || !Number.isInteger(area) || area < 1 || area > 77 || !Number.isFinite(value)) return;
+                const areas = groups.get(hour) || new Map(), values = areas.get(area) || [];
+                values.push(value); areas.set(area, values); groups.set(hour, areas);
+            });
+            const points = Array.from({length:24}, (_, i) => {
+                const label = forecastHour(selectedAt, i + 1), areas = groups.get(label);
+                const values = areas && [...areas.values()].map(items => items.reduce((a,b) => a+b, 0) / items.length);
+                return {label, value: values?.length ? values.reduce((a,b) => a+b, 0) / values.length : null, count: values?.length || 0};
+            });
+            if (!points.some(point => point.value !== null)) { caption.textContent = 'No forecast data in the next 24 hours.'; return; }
+            const node = (tag, attrs, content) => {
+                const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+                Object.entries(attrs).forEach(([key,value]) => el.setAttribute(key,value));
+                if (content !== undefined) el.textContent = content;
+                return el;
+            };
+            const svg = node('svg', {viewBox:'0 0 760 280',width:'100%',role:'img','aria-label':'Citywide mean forecast probability, next 24 hours'});
+            svg.style.minWidth = '560px';
+            const x = i => 60 + i * 670 / 23, y = value => 215 - value * 160;
+            [0,.25,.5,.75,1].forEach(value => {
+                svg.append(node('line',{x1:60,x2:730,y1:y(value),y2:y(value),stroke:'#ddd'}));
+                svg.append(node('text',{x:52,y:y(value)+4,'text-anchor':'end','font-size':12},Math.round(value*100)+'%'));
+            });
+            svg.append(node('text',{x:60,y:24,'font-size':13},'Mean probability (%)'));
+            let segment = [];
+            const flush = () => { if (segment.length > 1) svg.append(node('polyline',{points:segment.join(' '),fill:'none',stroke:'#2563eb','stroke-width':2})); segment=[]; };
+            points.forEach((point,i) => {
+                if (point.value === null) { flush(); return; }
+                segment.push(x(i)+','+y(point.value));
+                const label = point.label.replace('T',' ') + ': ' + (point.value*100).toFixed(1) + '% (' + point.count + ' areas)';
+                const marker = node('circle',{cx:x(i),cy:y(point.value),r:4,fill:'#2563eb',stroke:'#fff','stroke-width':2,tabindex:0,'aria-label':label});
+                marker.append(node('title',{},label)); svg.append(marker);
+            });
+            flush();
+            points.forEach((point,i) => { if (i%6===0 || i===23) svg.append(node('text',{x:x(i),y:240,'text-anchor':'middle','font-size':11},point.label.slice(11))); });
+            root.append(svg);
+        }
+        function renderTable(rows, headers, total) {
+            const header = document.querySelector('.footer-table thead tr');
+            header.replaceChildren(...headers.map(text => {
+                const cell = document.createElement('th'); cell.textContent = text; return cell;
+            }));
+            const body = document.getElementById('crimeTableBody');
+            body.replaceChildren(...rows.map(values => {
+                const row = document.createElement('tr');
+                values.forEach(value => { const cell = document.createElement('td'); cell.textContent = value ?? '—'; row.append(cell); });
+                return row;
+            }));
+            if (!rows.length) {
+                const row = document.createElement('tr'), cell = document.createElement('td');
+                cell.colSpan = headers.length; cell.textContent = 'No data for this selection'; row.append(cell); body.append(row);
+            }
+            document.getElementById('tablePage').textContent = `Page ${dashboardPage} / ${Math.max(1, Math.ceil(total / 20))} · ${number(total)} records`;
+            document.getElementById('previousPage').disabled = dashboardPage <= 1;
+            document.getElementById('nextPage').disabled = dashboardPage * 20 >= total;
+        }
+        async function refreshAnalytics(token) {
+            const version = ++dashboardVersion;
+            const status = document.getElementById('dashboardStatus');
+            status.textContent = 'Loading charts and table...';
+            try {
+                if (appliedFilter.mode === 'forecast') {
+                    document.getElementById('analysisTitle').textContent = 'Forecast trend - next 24 hours';
+                    const rows = forecastRows;
+                    const areas = [...averageProbabilities(rows)].map(([area, value]) => ({ label: `Area ${area}`, value }));
+                    chartBars('reportChart', areas, true);
+                    const from = forecastHour(appliedFilter.at, 1), to = forecastHour(appliedFilter.at, 25);
+                    const trendResponse = await fetch(`/api/predictions?${new URLSearchParams({from, to})}`, { headers: { Authorization: `Bearer ${token}` } });
+                    if (!trendResponse.ok) throw new Error('Unable to load forecast trend');
+                    const trendPayload = await trendResponse.json();
+                    if (version !== dashboardVersion) return;
+                    forecastTrendChart(trendPayload.data || [], appliedFilter.at);
+                    setKpiLabels(['Forecast areas', 'Mean crime probability', 'High-risk areas (60%+)']);
+                    document.getElementById('totalCrime').textContent = number(areas.length);
+                    document.getElementById('theftCrime').textContent = areas.length ? `${(areas.reduce((sum, row) => sum + row.value, 0) / areas.length * 100).toFixed(1)}%` : '—';
+                    document.getElementById('arrestRate').textContent = number(areas.filter(row => row.value >= 0.6).length);
+                    renderTable(rows.slice((dashboardPage - 1) * 20, dashboardPage * 20).map(row => [row.date, row.community_area, `${(Number(row.probability) * 100).toFixed(1)}%`]), ['Forecast time', 'Community Area', 'Crime probability'], rows.length);
+                    status.textContent = 'Forecast: map, KPIs, charts and table use the applied date/time and community area. Probabilities are not incident counts.';
+                } else {
+                    document.getElementById('analysisTitle').textContent = 'Crime Analysis — last 24 hours';
+                    setKpiLabels(['Total crime', 'Theft', 'Arrest rate']);
+                    const params = new URLSearchParams({ page: dashboardPage });
+                    if (appliedFilter.at) params.set('at', appliedFilter.at);
+                    if (appliedFilter.communityArea) params.set('community_area', appliedFilter.communityArea);
+                    const response = await fetch(`/api/dashboard?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+                    if (!response.ok) throw new Error('Unable to load crime charts and table');
+                    const payload = await response.json();
+                    if (version !== dashboardVersion) return;
+                    const summary = payload.summary;
+                    document.getElementById('totalCrime').textContent = number(summary.total);
+                    document.getElementById('theftCrime').textContent = number(summary.theft);
+                    document.getElementById('arrestRate').textContent = Number(summary.total) ? `${(Number(summary.arrested) / Number(summary.total) * 100).toFixed(1)}%` : '0%';
+                    chartBars('reportChart', payload.types);
+                    crimeLineChart(payload.trend);
+                    renderTable(payload.data.map(row => [row.crime_date, row.primary_type, row.community_area, row.description, row.arrest ? 'Yes' : 'No']), ['Crime time', 'Crime type', 'Community Area', 'Description', 'Arrest'], Number(summary.total));
+                    status.textContent = Number(summary.total) ? `Actual: ${appliedFilter.at} to +1 hour (end excluded), America/Chicago. All matching incidents; table: 20 per page.` : `No crime data for ${appliedFilter.at} to +1 hour (end excluded), America/Chicago`;
+                }
+            } catch (error) {
+                if (version !== dashboardVersion) return;
+                status.textContent = error.message;
+                chartBars('reportChart', []); chartBars('analysisChart', []);
+                renderTable([], ['Data unavailable'], 0);
+                ['totalCrime', 'theftCrime', 'arrestRate'].forEach(id => document.getElementById(id).textContent = '—');
+            }
+        }
+
+        async function loadAvailableTimes(token, mode) {
+            const choices = document.getElementById('availableHours');
+            choices.replaceChildren(new Option('Choose an available time', ''));
+            const params = new URLSearchParams({ mode });
+            if (communityFilter.value) params.set('community_area', communityFilter.value);
+            try {
+                const response = await fetch(`/api/available-times?${params}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Unable to load available hours; enter a date/time and press Apply.');
+                const payload = await response.json();
+                const values = payload.values || [];
+                const hours = payload.hours || values.map(value => ({ value }));
+                hours.forEach(hour => choices.add(new Option(
+                    `${hour.value.replace('T', ' ')}${mode === 'actual' ? ` (${number(hour.crime_count)} \u0e04\u0e14\u0e35)` : ''}`, hour.value)));
+                if (!mapDateTime.value && values.length) {
+                    mapDateTime.value = String(mode === 'forecast' ? (payload.trend_default || [...values].sort().at(-1)) : (payload.latest || [...values].sort().at(-1))).replace(' ', 'T').slice(0, 16);
+                }
+                choices.value = mapDateTime.value;
+                if (!values.length) mapNote.textContent = 'No available times for this selection. Enter a time to check.';
+            } catch (error) {
+                console.warn(error);
+                mapNote.textContent = error.message;
+            }
+        }
+
+        function riskColor(risk) {
+            if (risk >= 0.8) return '#800026';
+            if (risk >= 0.6) return '#e31a1c';
+            if (risk >= 0.4) return '#fd8d3c';
+            if (risk >= 0.2) return '#fecc5c';
+            return '#78c679';
+        }
+
+        function normalizeCounts(rows) {
+            const counts = new Map();
+            rows.forEach(row => {
+                const area = Number(row.community_area);
+                const count = Number(row.crime_count);
+                if (Number.isInteger(area) && Number.isFinite(count)) counts.set(area, count);
+            });
+            const max = Math.max(...counts.values(), 0);
+            return new Map([...counts].map(([area, count]) => [area, max ? count / max : 0]));
+        }
+
+        function averageProbabilities(rows) {
+            const grouped = new Map();
+            rows.forEach(row => {
+                const area = Number(row.community_area);
+                const probability = Number(row.probability);
+                if (!Number.isInteger(area) || !Number.isFinite(probability)) return;
+                const item = grouped.get(area) || { sum: 0, count: 0 };
+                item.sum += Math.max(0, Math.min(1, probability));
+                item.count += 1;
+                grouped.set(area, item);
+            });
+            return new Map([...grouped].map(([area, item]) => [area, item.count ? item.sum / item.count : 0]));
+        }
+
+        function drawCommunityAreas(values, label, valueLabel) {
+            const layer = L.layerGroup();
+            communityFeatures.forEach((feature, area) => {
+                const intensity = values.get(area);
+                if (!Number.isFinite(intensity)) return;
+                const color = riskColor(intensity);
+                L.geoJSON(feature, {
+                    style: {
+                        color, weight: 1, fillColor: color,
+                        fillOpacity: 0.18 + intensity * 0.52
+                    },
+                    onEachFeature: (_feature, shape) => {
+                        shape.bindTooltip(`${label} — Community Area ${area}<br>${valueLabel(intensity)}`);
+                    }
+                }).addTo(layer);
+            });
+            return layer.addTo(map);
+        }
+
+        async function loadGeoJson() {
+            // The old ArcGIS endpoint now returns HTTP 499 (Token Required),
+            // which stopped loadDashboard() before any heatmap could render.
+            // Use the City of Chicago's public GeoJSON export instead and keep
+            // a second public source as a fallback in case the catalog is busy.
+            const sources = ['/api/community-areas.geojson'];
+            let lastError;
+
+            for (const source of sources) {
+                try {
+                    const geoResponse = await fetch(source, {
+                        headers: { Authorization: `Bearer ${localStorage.getItem('crime_token')}` }
+                    });
+                    if (!geoResponse.ok) throw new Error(`HTTP ${geoResponse.status}`);
+                    const geoJson = await geoResponse.json();
+                    const features = (geoJson.features || []).filter(feature => feature.geometry);
+                    const nextFeatures = new Map(features.map(feature => {
+                        const props = feature.properties || {};
+                        const area = Number(
+                            props.area_num_1 ?? props.area_numbe ?? props.community_area ??
+                            props.comarea ?? props.comarea_id
+                        );
+                        return [area, feature];
+                    }).filter(([area]) => Number.isInteger(area) && area >= 1 && area <= 77));
+
+                    if (nextFeatures.size < 70) {
+                        throw new Error(`พบขอบเขต Community Area เพียง ${nextFeatures.size}/77 พื้นที่`);
+                    }
+                    communityFeatures = nextFeatures;
+                    return;
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`โหลดขอบเขตจาก ${source} ไม่สำเร็จ`, error);
+                }
+            }
+            throw new Error(`โหลดขอบเขต Community Area ไม่สำเร็จ: ${lastError?.message || 'unknown error'}`);
+        }
+
+        async function loadActual(token) {
+            const params = new URLSearchParams();
+            if (appliedFilter.communityArea) params.set('community_area', appliedFilter.communityArea);
+            const selectedAt = appliedFilter.at;
+            if (selectedAt) params.set('at', selectedAt);
+            else params.set('from_year', '2001');
+            const response = await fetch(`/api/crime-area-summary?${params.toString()}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('โหลดข้อมูลอาชญากรรมจริงไม่สำเร็จ');
+            const payload = await response.json();
+            if (!payload.data?.length) {
+                if (actualLayer) {
+                    map.removeLayer(actualLayer);
+                    actualLayer = null;
+                }
+                throw new Error(`No crime data for ${appliedFilter.at} to +1 hour (end excluded), America/Chicago`);
+            }
+            if (actualLayer) map.removeLayer(actualLayer);
+            actualLayer = drawCommunityAreas(
+                normalizeCounts(payload.data || []),
+                'Actual crimes',
+                value => `Relative incident intensity: ${(value * 100).toFixed(1)}%`
+            );
+            mapNote.textContent = payload.at
+                ? `ข้อมูลจริง ณ ${payload.at}: สีเข้ม = จำนวนเหตุการณ์สัมพัทธ์สูง`
+                : `ข้อมูลจริง ${payload.from_year}–${payload.to_year}: สีเข้ม = จำนวนเหตุการณ์สัมพัทธ์สูง`;
+        }
+
+        async function loadForecast(token) {
+            const params = new URLSearchParams();
+            if (appliedFilter.communityArea) params.set('community_area', appliedFilter.communityArea);
+            params.set('at', appliedFilter.at);
+            const query = params.toString() ? `?${params.toString()}` : '';
+            const response = await fetch(`/api/predictions${query}`, { headers: { Authorization: `Bearer ${token}` } });
+            if (!response.ok) throw new Error('โหลดข้อมูลพยากรณ์ไม่สำเร็จ');
+            const payload = await response.json();
+            allForecastRows = payload.data || [];
+            forecastRows = allForecastRows.filter(row => !appliedFilter.at || String(row.date || '').slice(0, 16).replace(' ', 'T') === appliedFilter.at);
+            payload.data = forecastRows;
+            if (!payload.data?.length) {
+                if (forecastLayer) {
+                    map.removeLayer(forecastLayer);
+                    forecastLayer = null;
+                }
+                throw new Error(`ไม่พบข้อมูลพยากรณ์สำหรับ ${appliedFilter.at || 'ช่วงเวลาที่เลือก'}`);
+            }
+            if (forecastLayer) map.removeLayer(forecastLayer);
+            forecastLayer = drawCommunityAreas(
+                averageProbabilities(payload.data || []),
+                'Forecast probability',
+                value => `Probability: ${(value * 100).toFixed(1)}%`
+            );
+            mapNote.textContent = appliedFilter.at
+                ? `พยากรณ์ ณ ${appliedFilter.at}: สีอ่อน = Probability ต่ำ, สีเข้ม = Probability สูง`
+                : 'พยากรณ์ 30 วัน: สีอ่อน = Probability ต่ำ, สีเข้ม = Probability สูง';
+        }
+
+        async function renderMapMode(token) {
+            try {
+            if (appliedFilter.mode === 'forecast') {
+                if (actualLayer) map.removeLayer(actualLayer);
+                await loadForecast(token);
+            } else {
+                if (forecastLayer) map.removeLayer(forecastLayer);
+                await loadActual(token);
+            }
+            } finally {
+                await refreshAnalytics(token);
+            }
+        }
+
+        async function loadDashboard() {
+            const token = localStorage.getItem('crime_token');
+            if (!token) { window.location.href = '/login.html'; return; }
+            let busy = false;
+            const refreshMap = async (reloadTimes = false) => {
+                if (busy) return;
+                busy = true;
+                if (reloadTimes) await loadAvailableTimes(token, mapMode.value);
+                if (!mapDateTime.reportValidity()) { busy = false; return; }
+                appliedFilter = Object.freeze({ mode: mapMode.value, at: mapDateTime.value, communityArea: communityFilter.value });
+                busy = true;
+                if (actualLayer) { map.removeLayer(actualLayer); actualLayer = null; }
+                if (forecastLayer) { map.removeLayer(forecastLayer); forecastLayer = null; }
+                forecastRows = [];
+                chartBars('reportChart', []); chartBars('analysisChart', []);
+                renderTable([], ['Loading'], 0);
+                ['totalCrime', 'theftCrime', 'arrestRate'].forEach(id => document.getElementById(id).textContent = '\u2014');
+                ++dashboardVersion;
+                mapMode.disabled = communityFilter.disabled = applyDateTime.disabled = true;
+                document.getElementById('previousPage').disabled = true;
+                document.getElementById('nextPage').disabled = true;
+                dashboardPage = 1;
+                mapNote.textContent = 'Loading selected community area...';
+                try {
+                    if (!communityFeatures.size) await loadGeoJson();
+                    await renderMapMode(token);
+                    const area = Number(appliedFilter.communityArea);
+                    const feature = communityFeatures.get(area);
+                    const features = feature ? [feature] : [...communityFeatures.values()];
+                    if (features.length) map.fitBounds(L.geoJSON({ type: 'FeatureCollection', features }).getBounds(), { padding: [16, 16], maxZoom: 13 });
+                } catch (error) {
+                    mapNote.textContent = error.message;
+                    document.getElementById('dashboardStatus').textContent = error.message;
+                    console.error(error);
+                } finally {
+                    busy = false;
+                    mapMode.disabled = communityFilter.disabled = applyDateTime.disabled = false;
+                }
+            };
+            mapMode.addEventListener('change', () => { mapDateTime.value = ''; return refreshMap(true); });
+            document.getElementById('availableHours').addEventListener('change', () => {
+                const value = document.getElementById('availableHours').value;
+                if (!value) return;
+                mapDateTime.value = value; return refreshMap();
+            });
+            communityFilter.addEventListener('change', () => refreshMap(true));
+            applyDateTime.addEventListener('click', () => refreshMap());
+            document.getElementById('previousPage').addEventListener('click', () => { if (busy || !appliedFilter || document.getElementById('previousPage').disabled) return; dashboardPage--; refreshAnalytics(token); });
+            document.getElementById('nextPage').addEventListener('click', () => { if (busy || !appliedFilter || document.getElementById('nextPage').disabled) return; dashboardPage++; refreshAnalytics(token); });
+            await refreshMap(true);
+
+        }
+        loadDashboard().catch(error => console.error(error));
     </script>
 </body>
 </html>

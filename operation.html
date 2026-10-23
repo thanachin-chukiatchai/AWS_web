@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>เจ้าหน้าที่ปฏิบัติการ | Chicago Crime</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f7;color:#172c36;font:15px/1.8 Tahoma,"Segoe UI",sans-serif}a{text-decoration:none;color:inherit}button{font:inherit;cursor:pointer}a:focus-visible,button:focus-visible{outline:3px solid #e99a65;outline-offset:4px}
+header{background:#fff;border-bottom:1px solid #dde4e7}.nav{max-width:1160px;margin:auto;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{display:flex;align-items:center;gap:12px;font-weight:bold;font-size:20px}.mark{background:#e35205;color:#fff;border-radius:8px;padding:2px 12px}.account{display:flex;align-items:center;gap:18px;font-size:13px;color:#61717a}.logout{border:1px solid #dde4e7;background:#fff;color:#172c36;border-radius:8px;padding:8px 16px}.logout:hover{background:#f4f6f7}
+main{max-width:1160px;margin:auto;padding:46px 32px 50px}.eyebrow{color:#e35205;font-size:11px;font-weight:bold;letter-spacing:2px;margin:0 0 12px}h1{font-size:clamp(27px,4vw,38px);margin:0 0 12px;line-height:1.4}.intro{color:#61717a;margin:0}.workspace{display:grid;grid-template-columns:1.6fr 1fr;gap:24px;margin-top:32px}.primary{background:#172c36;color:white;border-radius:16px;padding:36px;min-height:360px;display:flex;flex-direction:column;align-items:flex-start}.badge{font-size:12px;border:1px solid #ffffff30;border-radius:30px;padding:5px 12px;color:#d2dde1}.badge:before{content:'●';color:#f4a46e;margin-right:8px}.primary h2{font-size:26px;line-height:1.5;margin:24px 0 12px}.primary p{font-size:14px;color:#becbd1;max-width:440px;margin:0 0 28px}.cta{background:#e35205;border-radius:8px;padding:13px 20px;margin-top:auto;font-weight:bold;display:flex;gap:28px;align-items:center}.cta:hover{background:#c94704}
+.checklist{background:#fff;border:1px solid #dde4e7;border-radius:16px;padding:28px}.checklist h2{font-size:17px;margin:0 0 24px}.steps{list-style:none;padding:0;margin:0;display:grid;gap:24px}.steps li{display:flex;gap:14px}.step{flex:none;width:28px;height:28px;display:grid;place-items:center;background:#fff1e9;color:#e35205;font-size:12px;font-weight:bold;border-radius:7px}.steps h3{font-size:14px;margin:0 0 4px}.steps p{font-size:12px;color:#61717a;margin:0}.note{background:white;border:1px solid #dde4e7;border-radius:12px;padding:20px 24px;margin-top:24px}.note h2{font-size:14px;margin:0 0 4px}.note p{font-size:13px;color:#61717a;margin:0}footer{max-width:1160px;margin:auto;padding:0 32px 24px;font-size:11px;color:#61717a;display:flex;justify-content:space-between;gap:16px}
+@media(max-width:720px){.nav{padding:16px 20px}.account-name{display:none}.brand{font-size:17px}main{padding:30px 20px}.workspace{grid-template-columns:1fr}.primary{padding:28px;min-height:320px}.checklist{padding:24px}footer{padding:0 20px 24px;flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<header><div class="nav"><a class="brand" href="/operation.html"><span class="mark" aria-hidden="true">C</span>Chicago Crime</a><div class="account"><span class="account-name">เจ้าหน้าที่: <strong id="username">—</strong></span><button class="logout" id="logout" type="button">ออกจากระบบ</button></div></div></header>
+<main>
+<p class="eyebrow">OPERATIONS WORKSPACE</p><h1>เจ้าหน้าที่ปฏิบัติการ</h1><p class="intro">บันทึกเหตุการณ์อย่างครบถ้วน เพื่อสนับสนุนการวิเคราะห์และวางแผนความปลอดภัยของเมือง</p>
+<div class="workspace">
+<section class="primary" aria-labelledby="report-title"><div class="badge">บันทึกข้อมูลเหตุการณ์</div><h2 id="report-title">รายงานเหตุการณ์อาชญากรรมใหม่</h2><p>ระบุประเภทเหตุการณ์ รายละเอียด และพื้นที่เกิดเหตุ ผ่านแบบฟอร์มรายงานของระบบ</p><a class="cta" href="/report.html">เริ่มบันทึกเหตุการณ์ <span aria-hidden="true">↗</span></a></section>
+<aside class="checklist"><h2>เตรียมข้อมูลก่อนบันทึก</h2><ol class="steps">
+<li><span class="step">01</span><div><h3>ประเภทและรายละเอียดเหตุการณ์</h3><p>ตรวจสอบข้อมูลและคำอธิบายให้ตรงกับเหตุการณ์จริง</p></div></li>
+<li><span class="step">02</span><div><h3>สถานที่และพื้นที่รับผิดชอบ</h3><p>เตรียมพิกัด District และ Community Area</p></div></li>
+<li><span class="step">03</span><div><h3>สถานะของเหตุการณ์</h3><p>ตรวจสอบสถานะการจับกุมและข้อมูลที่เกี่ยวข้องก่อนส่ง</p></div></li>
+</ol></aside></div>
+<section class="note"><h2>ตรวจสอบความถูกต้องก่อนส่งข้อมูล</h2><p>หลีกเลี่ยงการบันทึกเหตุการณ์ซ้ำ และใส่เฉพาะข้อมูลที่จำเป็นต่อการรายงาน</p></section>
+</main><footer><span>Chicago Crime · Public Safety Analytics</span><span>พื้นที่ทำงานสำหรับเจ้าหน้าที่ปฏิบัติการ</span></footer>
+<script>
+let user = null;
+try { user = JSON.parse(localStorage.getItem('crime_user') || 'null'); } catch (_) {}
+if (!user || user.role !== 'operator' || !localStorage.getItem('crime_token')) location.replace('/login.html');
+else document.getElementById('username').textContent = user.username || 'operator';
+document.getElementById('logout').onclick = () => {
+    localStorage.removeItem('crime_token'); localStorage.removeItem('crime_user'); location.href = '/login.html';
+};
+</script>
+</body></html>

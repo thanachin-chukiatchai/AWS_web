@@ -41,6 +41,15 @@ get('mapDateTime').value='';available=['2001-01-02T00:00','2001-01-01T00:00'];aw
 get('mapMode').value='actual';get('availableHours').value='2001-01-01T00:00';await get('availableHours').events.change();assert.equal(run('appliedFilter.at'),'2001-01-01T00:00');
 empty=true;get('mapDateTime').value='2001-01-03T14:00';await get('applyDateTime').events.click();assert.equal(get('totalCrime').textContent,'0');assert.match(get('dashboardStatus').textContent,/No crime data/);assert.equal(run('actualLayer'),null);assert.equal(get('analysisChart').children.at(-1).children.filter(n=>n.attrs.cx!==undefined).length,24);
 get('mapDateTime').value='';failAvailable=true;await run("loadAvailableTimes('test','actual')");assert.equal(get('mapDateTime').disabled,false);
+failAvailable=false;empty=false;available=['2001-01-02T00:00','2001-01-01T00:00'];
+get('mapMode').value='actual';get('communityFilter').value='7';get('mapDateTime').value='2001-01-01T00:00';
+await get('latestActualHour').events.click();
+assert.equal(run('appliedFilter.at'),'2001-01-02T00:00');assert.equal(run('appliedFilter.communityArea'),'7');assert.equal(run('dashboardPage'),1);
+assert.equal(get('latestActualHour').hidden,false);assert.equal(get('latestActualHour').disabled,false);
+assert(calls.some(url=>url.includes('available-times')&&url.includes('community_area=7')));
+available=[];await run("loadAvailableTimes('test','actual')");assert.equal(get('latestActualHour').disabled,true);
+await run("loadAvailableTimes('test','forecast')");assert.equal(get('latestActualHour').hidden,true);
+assert.match(html,/<details id="availableTimesDetails">/);assert.doesNotMatch(html,/<details id="availableTimesDetails"[^>]*\bopen\b/);
 assert(!/toISOString|valueAsDate/.test(code));
 console.log('PASS: syntax, editable required input, empty suggestions/API failure, populated/empty Actual and Forecast, mode switching, Apply reset/validity, unapplied time/area pagination isolation, wall-clock query preservation.');
 })().catch(e=>{console.error(e);process.exitCode=1});

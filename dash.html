@@ -325,8 +325,12 @@
             </select>
             <label for="mapDateTime">Date/time</label>
             <input id="mapDateTime" type="datetime-local" step="60" required>
-            <label for="availableHours">Available times (latest 30 days with data)</label>
-            <select id="availableHours"><option value="">Choose an available time</option></select>
+            <button id="latestActualHour" type="button">Latest hour with data</button>
+            <details id="availableTimesDetails">
+                <summary>View hours with data</summary>
+                <label for="availableHours">Available times (latest 30 days with data)</label>
+                <select id="availableHours"><option value="">Choose an available time</option></select>
+            </details>
             <span>Timezone: America/Chicago (Chicago local time; CST/CDT). Actual: selected time ? crime time &lt; selected time + 1 hour.</span>
             <label for="communityFilter">Community Area</label>
             <select id="communityFilter"><option value="">All areas</option></select>
@@ -613,7 +617,10 @@
             }
         }
 
-        async function loadAvailableTimes(token, mode) {
+        async function loadAvailableTimes(token, mode, selectLatest = false) {
+            const latestButton = document.getElementById('latestActualHour');
+            latestButton.hidden = mode !== 'actual';
+            latestButton.disabled = true;
             const choices = document.getElementById('availableHours');
             choices.replaceChildren(new Option('Choose an available time', ''));
             const params = new URLSearchParams({ mode });
@@ -628,7 +635,8 @@
                 const hours = payload.hours || values.map(value => ({ value }));
                 hours.forEach(hour => choices.add(new Option(
                     `${hour.value.replace('T', ' ')}${mode === 'actual' ? ` (${number(hour.crime_count)} \u0e04\u0e14\u0e35)` : ''}`, hour.value)));
-                if (!mapDateTime.value && values.length) {
+                latestButton.disabled = !values.length;
+                if ((selectLatest || !mapDateTime.value) && values.length) {
                     mapDateTime.value = String(mode === 'forecast' ? (payload.trend_default || [...values].sort().at(-1)) : (payload.latest || [...values].sort().at(-1))).replace(' ', 'T').slice(0, 16);
                 }
                 choices.value = mapDateTime.value;
@@ -805,10 +813,10 @@
             const token = localStorage.getItem('crime_token');
             if (!token) { window.location.href = '/login.html'; return; }
             let busy = false;
-            const refreshMap = async (reloadTimes = false) => {
+            const refreshMap = async (reloadTimes = false, selectLatest = false) => {
                 if (busy) return;
                 busy = true;
-                if (reloadTimes) await loadAvailableTimes(token, mapMode.value);
+                if (reloadTimes) await loadAvailableTimes(token, mapMode.value, selectLatest);
                 if (!mapDateTime.reportValidity()) { busy = false; return; }
                 appliedFilter = Object.freeze({ mode: mapMode.value, at: mapDateTime.value, communityArea: communityFilter.value });
                 busy = true;
@@ -841,6 +849,7 @@
                 }
             };
             mapMode.addEventListener('change', () => { mapDateTime.value = ''; return refreshMap(true); });
+            document.getElementById('latestActualHour').addEventListener('click', () => refreshMap(true, true));
             document.getElementById('availableHours').addEventListener('change', () => {
                 const value = document.getElementById('availableHours').value;
                 if (!value) return;
